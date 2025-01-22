@@ -1,0 +1,50 @@
+name: Release Binary
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on any tag that starts with 'v'
+
+permissions:
+  contents: write # Needed for creating releases
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build for Linux
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o devtools-watcher-linux-amd64
+          chmod +x devtools-watcher-linux-amd64
+
+      - name: Build for Windows
+        run: |
+          GOOS=windows GOARCH=amd64 go build -o devtools-watcher-windows-amd64.exe
+
+      - name: Create SHA256 checksums
+        run: |
+          sha256sum devtools-watcher-linux-amd64 > devtools-watcher-linux-amd64.sha256
+          sha256sum devtools-watcher-windows-amd64.exe > devtools-watcher-windows-amd64.exe.sha256
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            devtools-watcher-linux-amd64
+            devtools-watcher-windows-amd64.exe
+            devtools-watcher-linux-amd64.sha256
+            devtools-watcher-windows-amd64.exe.sha256
+          draft: false
+          prerelease: false
+          generate_release_notes: true
